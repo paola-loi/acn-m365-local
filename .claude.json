@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "acn-m365": {
+      "command": "python",
+      "args": ["server.py"]
+    }
+  }
+}

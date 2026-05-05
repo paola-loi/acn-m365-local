@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Recurse -Force \"C:\\\\Users\\\\paola.loi\\\\OneDrive - Accenture\\\\Repos\\\\acn-m365-local\" | Select-Object FullName, @{Name=\"Size\";Expression={if\\($_.PSIsContainer\\) { \"DIR\" } else { $_.Length }}} | Format-Table -AutoSize)",
+      "Bash(\"C:\\\\Users\\\\paola.loi\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" --version)",
+      "Bash(\"C:\\\\Users\\\\paola.loi\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe\" -c \"import mcp; print\\(mcp.__version__\\)\")",
+      "Bash(cd /tmp)",
+      "Bash(unzip -o mcp_pkg/mcp-1.27.0-py3-none-any.whl -d mcp_full)",
+      "Read(//tmp/**)"
+    ]
+  }
+}
