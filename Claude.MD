@@ -1,18 +1,19 @@
 # acn-m365-local — CLAUDE.md
 
-Questo è il server MCP locale che simula il connettore Microsoft 365 di Claude.ai,
-leggendo direttamente dai file OneDrive sincronizzati. Vedi README.md per il contesto.
+This is the local MCP server that simulates Claude.ai's Microsoft 365
+connector by reading directly from OneDrive-synced files. See README.md for
+the broader context.
 
 ---
 
-## Permessi automatici (nessun prompt richiesto)
+## Automatic permissions (no prompt required)
 
-### Lettura file
-- Tutti i file in questa repo
-- Tutti i file sotto `C:\Users\paola.loi\OneDrive - Accenture\`
+### File reads
+- All files in this repo
+- All files under `C:\Users\paola.loi\OneDrive - Accenture\`
 
 ### Bash
-- `python server.py` — avvio/test del server MCP
+- `python server.py` — start/test the MCP server
 - `python -m pip install ...` / `pip install -r requirements.txt`
 - `python --version`, `pip --version`
 - `mcp run server.py`
@@ -20,12 +21,12 @@ leggendo direttamente dai file OneDrive sincronizzati. Vedi README.md per il con
 - `claude mcp list`, `claude mcp add`, `claude mcp remove`
 
 ### PowerShell
-- `python` e `pip` (qualsiasi variante)
+- `python` and `pip` (any variant)
 - `Get-ChildItem`, `Get-Content`, `Test-Path`, `Resolve-Path`
 - `Select-Object`, `Where-Object`, `Sort-Object`, `Format-Table`
 - `.\install.ps1`
 - `claude mcp list`, `claude mcp add`, `claude mcp remove`
-- `Set-Content`, `Out-File` (solo nella repo o in OneDrive - Accenture)
+- `Set-Content`, `Out-File` (only inside this repo or OneDrive - Accenture)
 
 ### MCP tools (acn-m365)
 - `list_project_files`
@@ -44,48 +45,47 @@ leggendo direttamente dai file OneDrive sincronizzati. Vedi README.md per il con
 
 ---
 
-## Workflow xlsx (editing iterativo)
+## xlsx workflow (iterative editing)
 
-Quando l'utente sta lavorando su un xlsx:
+When the user is working on an xlsx:
 
-- Dopo **ogni** chiamata a `write_cells`, richiama subito `read_cells` sullo
-  stesso range (o un range che include le celle toccate + 2 righe di contesto)
-  e mostra il risultato in chat come tabella markdown. L'utente non deve
-  aprire il file per vedere cos'è cambiato.
-- Iterazioni successive sullo stesso file devono continuare a modificare la
-  copia `<nome>.claude.xlsx` esistente (è il comportamento di default di
-  `write_cells`: se la copia esiste, la aggiorna). Non rifare la copia da zero
-  ogni turno.
-- Prima della prima modifica su un xlsx mai visto in questa conversazione,
-  chiama `list_sheets` e poi `read_cells` sul range rilevante per orientarti —
-  non assumere la struttura.
-- L'utente probabilmente tiene il file aperto in **LibreOffice Calc** accanto:
-  ricordagli nel primo messaggio della sessione xlsx di fare `File → Reload`
-  dopo ogni scrittura per vedere le formule calcolate. Excel di solito tiene
-  il file in lock e impedirebbe la scrittura su `.claude.xlsx` se la copia è
-  aperta lì.
-- Se l'utente chiede di "vedere live" / "aprire nel browser" / un viewer,
-  chiama `view_xlsx` e dagli l'URL — quella pagina si ricarica da sola sia
-  sui tuoi `write_cells` sia sui salvataggi da LibreOffice. In quel caso non
-  serve ricordare il Reload manuale; l'utente può anche dirti "non rileggere
-  il range dopo ogni write, guardo dal browser" — rispetta la preferenza
-  per il resto della sessione.
+- After **every** `write_cells` call, immediately call `read_cells` on the
+  same range (or a range that includes the touched cells + 2 rows of
+  context) and show the result in chat as a markdown table. The user
+  shouldn't have to open the file to see what changed.
+- Subsequent iterations on the same file must keep modifying the existing
+  `<name>.claude.xlsx` copy (this is `write_cells`'s default: if the copy
+  exists, it is updated). Don't recreate the copy from scratch each turn.
+- Before the first modification to an xlsx not yet seen in this conversation,
+  call `list_sheets` and then `read_cells` on the relevant range to orient
+  yourself — don't assume the structure.
+- The user likely keeps the file open in **LibreOffice Calc** alongside:
+  in the first message of an xlsx session, remind them to use
+  `File → Reload` after each write to see the calculated formulas. Excel
+  usually keeps the file locked and would block writes to `.claude.xlsx` if
+  the copy is open there.
+- If the user asks to "see it live" / "open in the browser" / wants a
+  viewer, call `view_xlsx` and give them the URL — that page reloads on its
+  own both for your `write_cells` calls and for LibreOffice saves. In that
+  case you don't need to remind them about manual Reload; the user may also
+  tell you "don't re-read the range after every write, I'm watching the
+  browser" — honor that preference for the rest of the session.
 
 ---
 
-## Operazioni che richiedono conferma
+## Operations that require confirmation
 
 - `git commit`, `git push`, `git reset`, `git checkout`
-- Eliminazione di file (`Remove-Item`, `rm`, `del`)
-- Scrittura fuori da questa repo o da `OneDrive - Accenture`
-- Modifica di `.claude/settings.json` o `.claude/settings.local.json`
+- File deletion (`Remove-Item`, `rm`, `del`)
+- Writes outside this repo or `OneDrive - Accenture`
+- Changes to `.claude/settings.json` or `.claude/settings.local.json`
 
 ---
 
-## Note di sviluppo
+## Development notes
 
-- Entry point: [server.py](server.py) — variabile `mcp` (istanza FastMCP)
-- Trasporto: stdio (default Claude Code MCP)
-- OneDrive base: `C:\Users\{USERNAME}\OneDrive - Accenture\` (USERNAME da `os.environ`)
-- Tutti i path validati contro la base dir (protezione path traversal)
-- Librerie documento importate lazy (server parte anche senza dipendenze installate)
+- Entry point: [server.py](server.py) — `mcp` variable (FastMCP instance)
+- Transport: stdio (Claude Code MCP default)
+- OneDrive base: `C:\Users\{USERNAME}\OneDrive - Accenture\` (USERNAME from `os.environ`)
+- All paths validated against the base dir (path traversal protection)
+- Document libraries imported lazily (the server can start without deps installed)

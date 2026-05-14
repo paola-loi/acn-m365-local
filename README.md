@@ -1,21 +1,21 @@
 # acn-m365-local
 
-MCP server Python che simula il connettore Microsoft 365 di Claude.ai leggendo
-direttamente dai file sincronizzati in OneDrive locale.
+A Python MCP server that simulates Claude.ai's Microsoft 365 connector by
+reading directly from locally synced OneDrive files.
 
-**Zero OAuth. Zero IT approval. 100% locale.**
+**Zero OAuth. Zero IT approval. 100% local.**
 
 ---
 
-## Prerequisiti
+## Prerequisites
 
 - Python 3.10+
 - Claude Code CLI (`npm install -g @anthropic-ai/claude-code`)
-- OneDrive for Business sincronizzato su `C:\Users\{USERNAME}\OneDrive - Accenture\`
+- OneDrive for Business synced to `C:\Users\{USERNAME}\OneDrive - Accenture\`
 
 ---
 
-## Installazione (3 passi)
+## Installation (3 steps)
 
 ```powershell
 git clone https://github.com/paola-loi/acn-m365-local.git
@@ -23,17 +23,17 @@ cd acn-m365-local
 .\install.ps1
 ```
 
-Lo script:
-1. Verifica che Python sia installato
-2. Installa le dipendenze (`mcp`, `python-docx`, `openpyxl`, `python-pptx`)
-3. Registra il server MCP in Claude Code
-4. Conferma con `claude mcp list`
+The script:
+1. Verifies Python is installed
+2. Installs the dependencies (`mcp`, `python-docx`, `openpyxl`, `python-pptx`)
+3. Registers the MCP server with Claude Code
+4. Confirms with `claude mcp list`
 
-Dopo l'installazione, **riavvia Claude Code** e verifica con `/mcp`.
+After installation, **restart Claude Code** and verify with `/mcp`.
 
 ---
 
-## Struttura OneDrive attesa
+## Expected OneDrive layout
 
 ```
 C:\Users\{USERNAME}\OneDrive - Accenture\
@@ -47,13 +47,13 @@ C:\Users\{USERNAME}\OneDrive - Accenture\
 └── ...
 ```
 
-Il server legge qualsiasi sottocartella come "progetto".
+The server treats any subfolder as a "project".
 
 ---
 
-## Formati supportati
+## Supported formats
 
-| Estensione | Libreria |
+| Extension | Library |
 |-----------|---------|
 | `.docx` | python-docx |
 | `.xlsx` | openpyxl |
@@ -62,89 +62,89 @@ Il server legge qualsiasi sottocartella come "progetto".
 
 ---
 
-## Esempi di utilizzo
+## Usage examples
 
 ```
-"Elenca tutti i file nella cartella MARS"
-"Mostrami solo gli Excel nel progetto Unilever"
-"Leggi il file MARS/budget_2025.xlsx"
-"Cerca 'action items' in tutti i documenti"
-"Cerca 'forecast' solo nel progetto MARS"
-"Quali file ho modificato questa settimana?"
-"Crea un file di note in MARS/riunione_20260505.md"
-"Genera un report summary del progetto MARS"
-"Elenca i fogli di MARS/budget_2025.xlsx"
-"Leggi il range A1:D50 del foglio Forecast in MARS/budget_2025.xlsx"
-"Spiega la formula nella cella C12 di MARS/budget_2025.xlsx"
-"Aggiungi una colonna Margin = Revenue - Cost in budget_2025.xlsx"
-"Cerca dove compare 'forecast' nelle formule di budget_2025.xlsx"
+"List all files in the MARS folder"
+"Show me only the Excel files in the Unilever project"
+"Read the file MARS/budget_2025.xlsx"
+"Search 'action items' across all documents"
+"Search 'forecast' only in the MARS project"
+"Which files did I modify this week?"
+"Create a notes file at MARS/meeting_20260505.md"
+"Generate a summary report of the MARS project"
+"List the sheets of MARS/budget_2025.xlsx"
+"Read range A1:D50 of the Forecast sheet in MARS/budget_2025.xlsx"
+"Explain the formula in cell C12 of MARS/budget_2025.xlsx"
+"Add a Margin = Revenue - Cost column in budget_2025.xlsx"
+"Find where 'forecast' appears in the formulas of budget_2025.xlsx"
 ```
 
-> Le scritture su xlsx **non sovrascrivono** mai l'originale: vengono salvate
-> accanto come `<nome>.claude.xlsx`. Apri quel file in Excel per vedere le
-> formule calcolate (openpyxl scrive solo l'espressione, non il valore).
+> Writes to xlsx files **never overwrite** the original: they are saved
+> alongside as `<name>.claude.xlsx`. Open that file in Excel to see the
+> calculated formulas (openpyxl only writes the expression, not the value).
 
 ---
 
-## Tool disponibili
+## Available tools
 
-| Tool | Descrizione |
-|------|------------|
-| `list_project_files` | Lista file in una cartella, con filtro per estensione |
-| `read_document` | Legge il contenuto di un file |
-| `search_documents` | Cerca keyword nel contenuto di tutti i file |
-| `get_recent_files` | File modificati negli ultimi N giorni |
-| `create_document` | Crea un nuovo file `.md` o `.docx` |
-| `update_document` | Sovrascrive un file esistente |
-| `create_summary_report` | Genera report `.md` aggregato di un progetto |
-| `list_sheets` | Elenca fogli di un xlsx con dimensioni |
-| `describe_sheet` | Header, tipi colonna inferiti, named ranges di un foglio |
-| `read_cells` | Legge un range A1 con valori **e** formule |
-| `write_cells` | Applica modifiche di celle salvando su copia `<nome>.claude.xlsx` |
-| `find_in_xlsx` | Cerca una stringa in valori e formule di un xlsx |
-| `view_xlsx` | Restituisce URL del viewer HTML live (auto-reload su write) |
+| Tool | Description |
+|------|-------------|
+| `list_project_files` | List files in a folder, with optional extension filter |
+| `read_document` | Read the contents of a file |
+| `search_documents` | Search a keyword across the contents of all files |
+| `get_recent_files` | Files modified in the last N days |
+| `create_document` | Create a new `.md` or `.docx` file |
+| `update_document` | Overwrite an existing file |
+| `create_summary_report` | Generate an aggregated `.md` report of a project |
+| `list_sheets` | List sheets of an xlsx with dimensions |
+| `describe_sheet` | Headers, inferred column types, named ranges of a sheet |
+| `read_cells` | Read an A1 range with values **and** formulas |
+| `write_cells` | Apply cell changes, saved to a `<name>.claude.xlsx` copy |
+| `find_in_xlsx` | Find a string across values and formulas of an xlsx |
+| `view_xlsx` | Return the URL of a live HTML viewer (auto-reload on write) |
 
 ---
 
-## Viewer live (sperimentale)
+## Live viewer (experimental)
 
-All'avvio del server parte un piccolo HTTP server su `http://127.0.0.1:8765`
-(stdlib, zero dipendenze extra). Bind solo localhost.
+When the server starts, a small HTTP server runs on `http://127.0.0.1:8765`
+(stdlib, zero extra dependencies). Bound to localhost only.
 
-Chiedi a Claude *"apri il viewer di MARS/budget.claude.xlsx"* → ti dà l'URL.
-La pagina mostra una tabella per ogni foglio e si ricarica automaticamente:
+Ask Claude *"open the viewer for MARS/budget.claude.xlsx"* → you get the URL.
+The page shows a table for each sheet and reloads automatically:
 
-- quando Claude scrive via `write_cells`
-- quando salvi il file da LibreOffice/Excel (polling mtime ~1s)
+- when Claude writes via `write_cells`
+- when you save the file from LibreOffice/Excel (mtime polling ~1s)
 
-Limiti:
-- è un **viewer**, non un editor — niente click sulle celle.
-- le formule mostrano l'ultimo valore *cached* da Excel (`openpyxl` non
-  ricalcola). Apri il file in Excel/Calc per vedere il calcolo reale.
-- truncate a 1000 righe × 100 colonne per foglio (banner se troncato).
-- se la porta 8765 è occupata il server tenta 8766–8775, poi una porta
-  random — guarda lo stderr del processo per la porta effettiva.
+Limits:
+- it is a **viewer**, not an editor — you can't click on cells.
+- formulas display the last *cached* value from Excel (`openpyxl` does not
+  recalculate). Open the file in Excel/Calc to see real calculations.
+- truncated to 1000 rows × 100 columns per sheet (banner shown if truncated).
+- if port 8765 is busy the server tries 8766–8775, then a random port —
+  check the process stderr for the actual port.
 
 ---
 
 ## Troubleshooting
 
-| Errore | Soluzione |
-|--------|-----------|
-| `OneDrive base path not found` | Verifica che OneDrive sia in esecuzione e sincronizzato |
-| `File not found` | Controlla il path e aspetta che la sync di OneDrive completi |
-| `Permission denied` | Chiudi il file in Office e attendi la sincronizzazione |
-| `Module not found` | Riesegui `pip install -r requirements.txt` |
-| Server non appare in `/mcp` | Esegui `claude mcp list` e riavvia Claude Code |
+| Error | Fix |
+|-------|-----|
+| `OneDrive base path not found` | Make sure OneDrive is running and synced |
+| `File not found` | Check the path and wait for OneDrive sync to finish |
+| `Permission denied` | Close the file in Office and wait for sync |
+| `Module not found` | Run `pip install -r requirements.txt` again |
+| Server doesn't appear in `/mcp` | Run `claude mcp list` and restart Claude Code |
 
 ---
 
-## Sviluppo locale
+## Local development
 
 ```powershell
-# Testa l'avvio del server (attende JSON-RPC su stdin — Ctrl+C per uscire)
+# Test server startup (waits for JSON-RPC on stdin — Ctrl+C to exit)
 python server.py
 
-# Oppure tramite CLI MCP
+# Or via the MCP CLI
 mcp run server.py
 ```
