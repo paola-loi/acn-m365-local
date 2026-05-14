@@ -102,6 +102,28 @@ Il server legge qualsiasi sottocartella come "progetto".
 | `read_cells` | Legge un range A1 con valori **e** formule |
 | `write_cells` | Applica modifiche di celle salvando su copia `<nome>.claude.xlsx` |
 | `find_in_xlsx` | Cerca una stringa in valori e formule di un xlsx |
+| `view_xlsx` | Restituisce URL del viewer HTML live (auto-reload su write) |
+
+---
+
+## Viewer live (sperimentale)
+
+All'avvio del server parte un piccolo HTTP server su `http://127.0.0.1:8765`
+(stdlib, zero dipendenze extra). Bind solo localhost.
+
+Chiedi a Claude *"apri il viewer di MARS/budget.claude.xlsx"* → ti dà l'URL.
+La pagina mostra una tabella per ogni foglio e si ricarica automaticamente:
+
+- quando Claude scrive via `write_cells`
+- quando salvi il file da LibreOffice/Excel (polling mtime ~1s)
+
+Limiti:
+- è un **viewer**, non un editor — niente click sulle celle.
+- le formule mostrano l'ultimo valore *cached* da Excel (`openpyxl` non
+  ricalcola). Apri il file in Excel/Calc per vedere il calcolo reale.
+- truncate a 1000 righe × 100 colonne per foglio (banner se troncato).
+- se la porta 8765 è occupata il server tenta 8766–8775, poi una porta
+  random — guarda lo stderr del processo per la porta effettiva.
 
 ---
 

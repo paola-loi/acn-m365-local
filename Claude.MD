@@ -35,6 +35,41 @@ leggendo direttamente dai file OneDrive sincronizzati. Vedi README.md per il con
 - `create_document`
 - `update_document`
 - `create_summary_report`
+- `list_sheets`
+- `describe_sheet`
+- `read_cells`
+- `write_cells`
+- `find_in_xlsx`
+- `view_xlsx`
+
+---
+
+## Workflow xlsx (editing iterativo)
+
+Quando l'utente sta lavorando su un xlsx:
+
+- Dopo **ogni** chiamata a `write_cells`, richiama subito `read_cells` sullo
+  stesso range (o un range che include le celle toccate + 2 righe di contesto)
+  e mostra il risultato in chat come tabella markdown. L'utente non deve
+  aprire il file per vedere cos'è cambiato.
+- Iterazioni successive sullo stesso file devono continuare a modificare la
+  copia `<nome>.claude.xlsx` esistente (è il comportamento di default di
+  `write_cells`: se la copia esiste, la aggiorna). Non rifare la copia da zero
+  ogni turno.
+- Prima della prima modifica su un xlsx mai visto in questa conversazione,
+  chiama `list_sheets` e poi `read_cells` sul range rilevante per orientarti —
+  non assumere la struttura.
+- L'utente probabilmente tiene il file aperto in **LibreOffice Calc** accanto:
+  ricordagli nel primo messaggio della sessione xlsx di fare `File → Reload`
+  dopo ogni scrittura per vedere le formule calcolate. Excel di solito tiene
+  il file in lock e impedirebbe la scrittura su `.claude.xlsx` se la copia è
+  aperta lì.
+- Se l'utente chiede di "vedere live" / "aprire nel browser" / un viewer,
+  chiama `view_xlsx` e dagli l'URL — quella pagina si ricarica da sola sia
+  sui tuoi `write_cells` sia sui salvataggi da LibreOffice. In quel caso non
+  serve ricordare il Reload manuale; l'utente può anche dirti "non rileggere
+  il range dopo ogni write, guardo dal browser" — rispetta la preferenza
+  per il resto della sessione.
 
 ---
 
