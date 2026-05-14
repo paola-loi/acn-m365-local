@@ -73,7 +73,16 @@ Il server legge qualsiasi sottocartella come "progetto".
 "Quali file ho modificato questa settimana?"
 "Crea un file di note in MARS/riunione_20260505.md"
 "Genera un report summary del progetto MARS"
+"Elenca i fogli di MARS/budget_2025.xlsx"
+"Leggi il range A1:D50 del foglio Forecast in MARS/budget_2025.xlsx"
+"Spiega la formula nella cella C12 di MARS/budget_2025.xlsx"
+"Aggiungi una colonna Margin = Revenue - Cost in budget_2025.xlsx"
+"Cerca dove compare 'forecast' nelle formule di budget_2025.xlsx"
 ```
+
+> Le scritture su xlsx **non sovrascrivono** mai l'originale: vengono salvate
+> accanto come `<nome>.claude.xlsx`. Apri quel file in Excel per vedere le
+> formule calcolate (openpyxl scrive solo l'espressione, non il valore).
 
 ---
 
@@ -88,6 +97,11 @@ Il server legge qualsiasi sottocartella come "progetto".
 | `create_document` | Crea un nuovo file `.md` o `.docx` |
 | `update_document` | Sovrascrive un file esistente |
 | `create_summary_report` | Genera report `.md` aggregato di un progetto |
+| `list_sheets` | Elenca fogli di un xlsx con dimensioni |
+| `describe_sheet` | Header, tipi colonna inferiti, named ranges di un foglio |
+| `read_cells` | Legge un range A1 con valori **e** formule |
+| `write_cells` | Applica modifiche di celle salvando su copia `<nome>.claude.xlsx` |
+| `find_in_xlsx` | Cerca una stringa in valori e formule di un xlsx |
 
 ---
 

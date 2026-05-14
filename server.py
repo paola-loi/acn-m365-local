@@ -54,6 +54,11 @@ def _read_xlsx(path: Path) -> str:
     return "\n".join(lines)
 
 
+def _xlsx_workbook(path: Path, *, data_only: bool, read_only: bool = True):
+    from openpyxl import load_workbook
+    return load_workbook(str(path), read_only=read_only, data_only=data_only)
+
+
 def _read_pptx(path: Path) -> str:
     from pptx import Presentation
     prs = Presentation(str(path))
@@ -246,6 +251,267 @@ def get_recent_files(days: int = 7, project: Optional[str] = None) -> list[dict]
             })
 
     return sorted(results, key=lambda x: x["modified_date"], reverse=True)
+
+
+# ── XLSX structured tools ──────────────────────────────────────────
+
+def _require_xlsx(path: str) -> Path:
+    target = _resolve_path(path)
+    if not target.exists():
+        raise ToolError(f"File not found: {target}.")
+    if target.suffix.lower() != ".xlsx":
+        raise ToolError(f"Not an xlsx file: {target}.")
+    return target
+
+
+@mcp.tool()
+def list_sheets(path: str) -> list[dict]:
+    """List worksheets in an xlsx file with their dimensions.
+
+    Args:
+        path: File path relative to OneDrive base (e.g. "MARS/budget.xlsx")
+    """
+    target = _require_xlsx(path)
+    wb = _xlsx_workbook(target, data_only=True, read_only=True)
+    try:
+        return [
+            {
+                "name": ws.title,
+                "max_row": ws.max_row,
+                "max_col": ws.max_column,
+                "dimensions": ws.dimensions,
+            }
+            for ws in wb.worksheets
+        ]
+    finally:
+        wb.close()
+
+
+@mcp.tool()
+def describe_sheet(path: str, sheet: str, header_row: int = 1) -> dict:
+    """Describe a worksheet: headers, inferred column types, non-empty row count, named ranges.
+
+    Args:
+        path: File path relative to OneDrive base
+        sheet: Worksheet name
+        header_row: Row number containing headers (default: 1)
+    """
+    target = _require_xlsx(path)
+    wb = _xlsx_workbook(target, data_only=True, read_only=True)
+    try:
+        if sheet not in wb.sheetnames:
+            raise ToolError(f"Sheet '{sheet}' not found. Available: {wb.sheetnames}")
+        ws = wb[sheet]
+
+        headers: list = []
+        for row in ws.iter_rows(min_row=header_row, max_row=header_row, values_only=True):
+            headers = list(row)
+            break
+
+        max_col = ws.max_column or 0
+        samples: list[list] = [[] for _ in range(max_col)]
+        non_empty_rows = 0
+        sample_limit = 20
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            if any(c is not None and c != "" for c in row):
+                non_empty_rows += 1
+            for i, cell in enumerate(row[:max_col]):
+                if cell is not None and cell != "" and len(samples[i]) < sample_limit:
+                    samples[i].append(cell)
+
+        def infer_type(values: list) -> str:
+            if not values:
+                return "empty"
+            types = {type(v).__name__ for v in values}
+            if types == {"int"} or types == {"float"} or types <= {"int", "float"}:
+                return "number"
+            if types == {"bool"}:
+                return "bool"
+            if types == {"datetime"} or types == {"date"}:
+                return "date"
+            if types == {"str"}:
+                return "string"
+            return "mixed:" + ",".join(sorted(types))
+
+        columns = [
+            {
+                "header": headers[i] if i < len(headers) else None,
+                "inferred_type": infer_type(samples[i]),
+                "sample": samples[i][:5],
+            }
+            for i in range(max_col)
+        ]
+
+        named_ranges = []
+        try:
+            for dn in wb.defined_names:
+                dest = wb.defined_names[dn]
+                named_ranges.append({"name": dn, "value": str(dest.value)})
+        except Exception:
+            pass
+
+        return {
+            "sheet": sheet,
+            "dimensions": ws.dimensions,
+            "max_row": ws.max_row,
+            "max_col": max_col,
+            "non_empty_data_rows": non_empty_rows,
+            "header_row": header_row,
+            "columns": columns,
+            "named_ranges": named_ranges,
+        }
+    finally:
+        wb.close()
+
+
+@mcp.tool()
+def read_cells(path: str, sheet: str, range: str, include_formulas: bool = True) -> dict:
+    """Read a cell range from an xlsx worksheet, returning values and formulas.
+
+    Args:
+        path: File path relative to OneDrive base
+        sheet: Worksheet name
+        range: A1-notation range (e.g. "A1:D50")
+        include_formulas: If true, also return formula text alongside cached values
+    """
+    target = _require_xlsx(path)
+
+    wb_values = _xlsx_workbook(target, data_only=True, read_only=True)
+    wb_formulas = _xlsx_workbook(target, data_only=False, read_only=True) if include_formulas else None
+    try:
+        if sheet not in wb_values.sheetnames:
+            raise ToolError(f"Sheet '{sheet}' not found. Available: {wb_values.sheetnames}")
+        ws_v = wb_values[sheet]
+        ws_f = wb_formulas[sheet] if wb_formulas is not None else None
+
+        try:
+            value_rows = list(ws_v[range])
+        except (ValueError, KeyError) as e:
+            raise ToolError(f"Invalid range {range!r}: {e}")
+        formula_rows = list(ws_f[range]) if ws_f is not None else None
+
+        cells: list[list[dict]] = []
+        for r_idx, row in enumerate(value_rows):
+            out_row: list[dict] = []
+            for c_idx, cell in enumerate(row):
+                entry: dict = {"addr": cell.coordinate, "value": cell.value}
+                if formula_rows is not None:
+                    f_cell = formula_rows[r_idx][c_idx]
+                    fv = f_cell.value
+                    if isinstance(fv, str) and fv.startswith("="):
+                        entry["formula"] = fv
+                out_row.append(entry)
+            cells.append(out_row)
+
+        return {"sheet": sheet, "range": range, "cells": cells}
+    finally:
+        wb_values.close()
+        if wb_formulas is not None:
+            wb_formulas.close()
+
+
+@mcp.tool()
+def write_cells(
+    path: str,
+    sheet: str,
+    changes: list[dict],
+    output_suffix: str = ".claude",
+) -> dict:
+    """Apply cell changes and save to a sibling copy (never overwrites the original).
+
+    Args:
+        path: Source xlsx path relative to OneDrive base
+        sheet: Worksheet name to modify
+        changes: List of {"cell": "B7", "value": ...} or {"cell": "B7", "formula": "=SUM(A1:A6)"}
+        output_suffix: Suffix inserted before .xlsx for the output copy (default: ".claude")
+    """
+    target = _require_xlsx(path)
+
+    out_path = target.with_name(f"{target.stem}{output_suffix}.xlsx")
+    source = out_path if out_path.exists() else target
+
+    wb = _xlsx_workbook(source, data_only=False, read_only=False)
+    try:
+        if sheet not in wb.sheetnames:
+            raise ToolError(f"Sheet '{sheet}' not found. Available: {wb.sheetnames}")
+        ws = wb[sheet]
+
+        applied = 0
+        for ch in changes:
+            cell_addr = ch.get("cell")
+            if not cell_addr:
+                raise ToolError(f"Change missing 'cell' key: {ch}")
+            if "formula" in ch:
+                f = ch["formula"]
+                if not isinstance(f, str) or not f.startswith("="):
+                    raise ToolError(f"Formula for {cell_addr} must be a string starting with '=': {f!r}")
+                ws[cell_addr] = f
+            elif "value" in ch:
+                ws[cell_addr] = ch["value"]
+            else:
+                raise ToolError(f"Change for {cell_addr} must include 'value' or 'formula'.")
+            applied += 1
+
+        try:
+            wb.save(str(out_path))
+        except PermissionError:
+            raise ToolError(
+                f"Permission denied writing {out_path}. Close the file in Excel and retry."
+            )
+    finally:
+        wb.close()
+
+    base = _get_onedrive_base()
+    return {
+        "output_path": str(out_path.relative_to(base)),
+        "sheet": sheet,
+        "changes_applied": applied,
+    }
+
+
+@mcp.tool()
+def find_in_xlsx(path: str, query: str, sheet: Optional[str] = None) -> list[dict]:
+    """Search a string (case-insensitive) across cell values and formulas of an xlsx.
+
+    Args:
+        path: File path relative to OneDrive base
+        query: Substring to find
+        sheet: Optional sheet name to restrict the search
+    """
+    target = _require_xlsx(path)
+    q = query.lower()
+
+    wb_v = _xlsx_workbook(target, data_only=True, read_only=True)
+    wb_f = _xlsx_workbook(target, data_only=False, read_only=True)
+    try:
+        sheets = [sheet] if sheet else wb_v.sheetnames
+        if sheet and sheet not in wb_v.sheetnames:
+            raise ToolError(f"Sheet '{sheet}' not found. Available: {wb_v.sheetnames}")
+
+        hits: list[dict] = []
+        for s in sheets:
+            ws_v = wb_v[s]
+            ws_f = wb_f[s]
+            f_iter = ws_f.iter_rows()
+            for v_row in ws_v.iter_rows():
+                f_row = next(f_iter, ())
+                for i, v_cell in enumerate(v_row):
+                    v = v_cell.value
+                    f = f_row[i].value if i < len(f_row) else None
+                    formula = f if isinstance(f, str) and f.startswith("=") else None
+                    v_str = "" if v is None else str(v)
+                    f_str = formula or ""
+                    if q in v_str.lower() or q in f_str.lower():
+                        hits.append({
+                            "sheet": s,
+                            "cell": v_cell.coordinate,
+                            "value": v,
+                            "formula": formula,
+                        })
+        return hits
+    finally:
+        wb_v.close()
+        wb_f.close()
 
 
 # ── WRITE tools ────────────────────────────────────────────────────
